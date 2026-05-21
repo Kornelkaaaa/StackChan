@@ -1,0 +1,27 @@
+# ESP-IDF defaults for the M5Stack StackChan ESP32-S3 board.
+# Copy these into a fresh sdkconfig with `idf.py reconfigure` if needed.
+# Values mirror the proven settings from the existing firmware in ../../../firmware.
+
+CONFIG_IDF_TARGET="esp32s3"
+
+# Flash + partitions
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# PSRAM is required — Gemini Live audio buffers (24 kHz, 16-bit) need
+# room to breathe and internal RAM is tight on S3.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_SPEED_80M=y
+
+# Run the CPU at 240 MHz for low audio latency.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+
+# Bigger main task stack — we'll spawn audio/WS workers off it.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# WiFi tuning: a handful of dynamic buffers so we can keep streaming
+# while a packet is in flight. Same numbers the existing firmware uses.
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=3
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=6

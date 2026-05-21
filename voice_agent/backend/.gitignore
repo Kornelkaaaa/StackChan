@@ -1,0 +1,10 @@
+.env
+.venv/
+memory.db
+memory.db-shm
+memory.db-wal
+__pycache__/
+*.egg-info/
+.pytest_cache/
+dist/
+build/

@@ -1,0 +1,31 @@
+menu "Stack-chan Voice Agent"
+
+config VOICE_AGENT_WIFI_SSID
+    string "WiFi SSID"
+    default "your-ssid"
+    help
+        Your home/lab WiFi network name. Stored in sdkconfig, which is
+        gitignored by ESP-IDF by default — credentials don't end up in git.
+
+config VOICE_AGENT_WIFI_PASSWORD
+    string "WiFi Password"
+    default ""
+    help
+        WPA2 password. Leave empty for an open network (don't do that).
+
+config VOICE_AGENT_BACKEND_URI
+    string "Backend WebSocket URI"
+    default "ws://192.168.1.100:8765/ws"
+    help
+        Full URI of the Stack-chan voice backend, e.g.
+        ws://<laptop-ip>:8765/ws — the laptop's address on the same LAN.
+        Unused in chunk 5a; wired up in chunk 5b.
+
+config VOICE_AGENT_DEVICE_ID
+    string "Device ID"
+    default "stackchan-01"
+    help
+        Sent in the WebSocket client_hello. Useful when you eventually
+        have more than one Stack-chan.
+
+endmenu
