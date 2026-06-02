@@ -152,6 +152,14 @@ def main(argv: list[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
 
+    # Windows consoles often default to a legacy code page (e.g. cp1250) that
+    # can't encode the glyphs we print (→) or non-ASCII transcript text, which
+    # would crash with UnicodeEncodeError. Force UTF-8 with a safe fallback.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
     db_path = _resolve_db_path(args.db)
     conn = _connect(db_path)
     try:

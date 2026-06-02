@@ -8,3 +8,6 @@ __pycache__/
 .pytest_cache/
 dist/
 build/
+
+# Local audio test artifacts (fake_client input/output, make_sample_wav output)
+*.wav
