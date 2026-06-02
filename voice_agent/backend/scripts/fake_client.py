@@ -32,7 +32,18 @@ logger = logging.getLogger("fake_client")
 
 _OUTPUT_SAMPLE_RATE = 24000  # Gemini Live always returns 24 kHz
 _FRAME_MS = 20
-_TAIL_GRACE_SEC = 1.0  # wait this long after sending all audio before closing
+# The real device streams its mic continuously, so trailing silence/noise
+# always follows the user's speech — that speech→silence transition is what
+# Gemini Live's automatic VAD uses to detect end-of-turn. A WAV file stops
+# abruptly, so we append silence to reproduce the device's behaviour and let
+# the model decide the turn is over.
+_TRAILING_SILENCE_SEC = 1.5
+# After the last audio frame, hold the connection open so the model can
+# detect end-of-speech, think, and stream its reply back. The real Gemini
+# Live native-audio model needs several seconds; the echo mock is instant.
+# We close as soon as the model finishes its turn (speaking_end), falling
+# back to this ceiling if no reply ever arrives.
+_REPLY_TIMEOUT_SEC = 30.0
 
 
 def _read_wav(path: Path) -> tuple[bytes, int]:
@@ -74,6 +85,7 @@ async def run(input_wav: Path, output_wav: Path, url: str) -> None:
 
     received_pcm = bytearray()
     server_closed = asyncio.Event()
+    turn_done = asyncio.Event()  # set when the model finishes a reply turn
 
     async with websockets.connect(url) as ws:
         await ws.send(json.dumps({
@@ -95,15 +107,25 @@ async def run(input_wav: Path, output_wav: Path, url: str) -> None:
                 else:
                     event = json.loads(message)
                     logger.info("server_event: %s", event)
-                    if event.get("type") == "session_close":
+                    etype = event.get("type")
+                    if etype == "speaking_end":
+                        turn_done.set()
+                    elif etype == "session_close":
                         server_closed.set()
                         return
 
         recv_task = asyncio.create_task(receive_loop())
         try:
             await _stream_audio(ws, pcm_in, sample_rate_hz)
-            logger.info("audio_sent waiting_for_trailing_echo")
-            await asyncio.sleep(_TAIL_GRACE_SEC)
+            # Trailing silence so Gemini's VAD sees end-of-speech (see note above).
+            silence = b"\x00" * (int(sample_rate_hz * _TRAILING_SILENCE_SEC) * 2)
+            await _stream_audio(ws, silence, sample_rate_hz)
+            logger.info("audio_sent waiting_for_reply (up to %.0fs)", _REPLY_TIMEOUT_SEC)
+            try:
+                await asyncio.wait_for(turn_done.wait(), timeout=_REPLY_TIMEOUT_SEC)
+                logger.info("reply_complete")
+            except asyncio.TimeoutError:
+                logger.warning("no_reply_within_%.0fs", _REPLY_TIMEOUT_SEC)
             await ws.send(json.dumps({"type": "client_close"}))
             try:
                 await asyncio.wait_for(server_closed.wait(), timeout=5.0)
