@@ -1,0 +1,9 @@
+# Managed components fetched on `idf.py reconfigure`.
+# Versions are floors — `>=X.Y` lets the registry pick the latest minor.
+dependencies:
+  # WebSocket client used by ws_client.c
+  espressif/esp_websocket_client: ">=1.2"
+
+  # Codec abstraction + AW88298 amp + ES7210 mic drivers.
+  # The same component the factory M5Stack firmware uses on this board.
+  espressif/esp_codec_dev: ">=1.3"
